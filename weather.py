@@ -84,8 +84,10 @@ def get_weather(address: str) -> dict:
     # Retrieving the necessary information from the address
     address_info = _geocode_address(address=address)
 
+    # The latitude and longitude are in the info, and will be used to request some data later on
     lat, lon = address_info['latitude'], address_info['longitude']
 
+    # Creating the payload mandatory to request the weather
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -93,8 +95,18 @@ def get_weather(address: str) -> dict:
         "timezone": "Europe/Paris"  # Making the hypothesis that
     }
 
-    weather_data = _request_weather(params=params)
+    weather_data = {
+        'coordinates': (lat, lon),
+        'address': address
+    }
 
+    # Requesting the weather data...
+    response = _request_weather(params=params)
+
+    # ... and extending the previously created dictionary with returned values
+    weather_data.update(response)
+
+    # Presenting the data in the appropriate format
     _format_weather_data(weather_data=weather_data)
 
     return weather_data
