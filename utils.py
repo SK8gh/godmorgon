@@ -1,22 +1,7 @@
 import numpy.typing as npt
-
-
-def distance(a: npt.ArrayLike, b: npt.ArrayLike, p: int = 2) -> float:
-    """
-    Compute the L^p distance between two vectors a and b having the same dimension, p defaulted to 2 to compute the
-    Euler's distance
-    """
-    a = np.array(a)
-    b = np.array(b)
-
-    assert a.shape == b.shape
-
-    return np.linalg.norm(a - b, ord=p)
-
-
-import numpy as np
-import numpy.typing as npt
 from typing import Tuple
+import numpy as np
+
 
 def distance(a: npt.ArrayLike, b: npt.ArrayLike, p: int = 2) -> float:
     """
@@ -56,15 +41,6 @@ def _offset_values(arr: npt.ArrayLike, v: float = np.inf, left: bool = True) -> 
     """
     Offsetting values from an array, adding a default value at the beginning or end. The returned array has the same
     size as 'arr' so this is not an append operation (left or right) nor an extension
-
-    >>> array = np.array([1, 2, 3, 4])
-    >>> value = 99
-    >>>
-    >>> _offset_values(arr=array, v=value, left=True)
-    >>> _offset_values(arr=array, v=value, left=False)
-
-    Out[1]: array([99,  1,  2, 3])
-    Out[2]: array([ 2,  3, 4, 99])
     """
     arr = np.asarray(arr)
     out = np.empty_like(arr)
