@@ -1,10 +1,10 @@
-from typing import Tuple, List
-import numpy.typing as npt
+from typing import Tuple, Dict, List
+from functools import lru_cache
 import numpy as np
 import pandas as pd
 import requests
 
-from utils import distance, max_n
+from utils.utils import distance, max_n
 
 
 # Station information and status endpoints
@@ -23,12 +23,13 @@ DROP_COLUMNS_STATION_INFO = (
 )
 
 
-def get_stations_info() -> Tuple[np.array, np.array]:
+@lru_cache(maxsize=1)
+def get_stations_info() -> Tuple[List[Dict], List[Dict]]:
     """
     Retrieves bike stations information and status from the respective endpoints
     """
     stations, status = (
-        np.asarray(  # Converts to array
+        list(  # Converts to array
             requests.get(url).json()["data"]["stations"]  # requests, converts to json & does the appropriate lookup
         )
         for url in (INFO_URL, STATUS_URL)  # For both those URLs
@@ -38,14 +39,15 @@ def get_stations_info() -> Tuple[np.array, np.array]:
 
 
 def get_nearest_stations(
-        stations_info: npt.ArrayLike,
-        stations_status: npt.ArrayLike,
         location: Tuple[float, float],
         n: int = 3
 ):
     """
     Finding the n-nearest stations from a given location (lat, lon)
     """
+    # the following function call is somewhat costly but implements lru_cache(max_size=1) so it will be costly only once
+    stations_info, stations_status = get_stations_info()
+
     lat, lon = location
 
     distances = np.zeros(len(stations_info))
@@ -60,7 +62,7 @@ def get_nearest_stations(
     return [np.asarray(s)[indices] for s in (stations_info, stations_status)]
 
 
-def _format_stations_info(
+def format_stations_info(
         stations_info: List[np.array],
         stations_status: List[np.array]
 ) -> pd.DataFrame:
@@ -90,13 +92,11 @@ def _format_stations_info(
     return df
 
 
-stations_info, stations_status = get_stations_info()
+if __name__ == '__main__':
+    station_info, station_status = get_nearest_stations(
+        location=(48.852835, 2.385478)
+    )
 
-stations_info, stations_status = get_nearest_stations(
-    stations_info=stations_info,
-    stations_status=stations_status,
-    location=(48.852835, 2.385478),
-    n=3
-)
+    info = format_stations_info(stations_info=station_info, stations_status=station_status)
 
-_format_stations_info(stations_info=stations_info, stations_status=stations_status)
+    print(info)
