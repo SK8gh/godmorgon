@@ -9,8 +9,6 @@ import logging
 import uvicorn
 import sys
 
-from api import HOST  # importing the value of the server hosting the services
-
 
 # log files path
 LOGS = './src/logs/'
@@ -217,6 +215,8 @@ def run_service(service_name: str, service: FastAPI, port: int):
     """
     running a generic service
     """
+    from application import HOST  # importing the value of the server hosting the services
+
     logging.info(f"Launching service {service_name}")
 
     if ENABLE_LOGS_PURGE:

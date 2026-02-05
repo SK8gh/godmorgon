@@ -1,7 +1,3 @@
-"""
-FastAPI Weather Microservice
-Provides REST API endpoints for weather information
-"""
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,19 +6,14 @@ from datetime import datetime
 import logging
 
 # Import our weather service
-from utils.utils import AppLogging, utc_time, purge_logs, ENABLE_LOGS_PURGE, health_check, run_service
+from application import VERSION, HealthResponse, app_logging
+from utils.utils import utc_time, health_check, run_service
 from src.weather.weather import get_weather
 from utils.errors import GeocodeException
 
 
 SERVICE_NAME = "weather-microservice"
-VERSION = "1.0.0"
 PORT = 8001
-
-LOG_LEVEL = logging.DEBUG
-
-# setting up root logger: app scope
-app_logging = AppLogging(level=logging.INFO)
 
 # setting up service logger: service scope
 logger = app_logging.set_service_logger(
@@ -46,15 +37,6 @@ weather_service.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-class HealthResponse(BaseModel):
-    """
-    response object for the health check request
-    """
-    status: str
-    timestamp: datetime
-    service: str
 
 
 class WeatherResponse(BaseModel):
@@ -120,10 +102,13 @@ def get_weather_info(
         raise HTTPException(status_code=500, detail=f"Could not retrieve weather data: {str(e)}")
 
 
-if __name__ == "__main__":
-    # running the service
+def run_weather_service():
     run_service(
         service_name=SERVICE_NAME,
         service=weather_service,
         port=PORT
     )
+
+
+if __name__ == "__main__":
+    run_weather_service()

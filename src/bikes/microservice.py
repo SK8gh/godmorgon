@@ -1,7 +1,3 @@
-"""
-FastAPI Weather Microservice
-Provides REST API endpoints for weather information
-"""
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -9,18 +5,13 @@ from typing import Dict
 import logging
 
 # Import our weather service
-from utils.utils import AppLogging, utc_time, run_service
-from src.weather.microservice import HealthResponse
+from application import VERSION, HealthResponse, app_logging
 from src.bikes.bikes import get_nearest_stations
+from utils.utils import utc_time, run_service
+
 
 SERVICE_NAME = "bike-microservice"
-VERSION = "1.0.0"
 PORT = 8002
-
-LOG_LEVEL = logging.DEBUG
-
-# setting up root logger: app scope
-app_logging = AppLogging(level=logging.INFO)
 
 # setting up service logger: service scope
 logger = app_logging.set_service_logger(
@@ -90,20 +81,24 @@ def get_address_nearest_stations(
     # perform weather microservice call
     location = ...
 
-    stations_info, stations_status = get_nearest_stations(
-        location=location
-    )
+    # stations_info, stations_status = get_nearest_stations(
+    #     location=location
+    # )
 
     # returning the formatted information
-    return format_stations_info(stations_info=station_info, stations_status=station_status)
+    # return format_stations_info(stations_info=station_info, stations_status=station_status)
+    return {}
 
 
-# Run the server
-if __name__ == "__main__":
-    # running the service
+def run_bikes_service():
     run_service(
         service_name=SERVICE_NAME,
         service=bike_service,
         port=PORT
     )
 
+
+# Run the server
+if __name__ == "__main__":
+    # running the service
+    run_bikes_service()
