@@ -1,14 +1,23 @@
 from pythonjsonlogger.json import JsonFormatter
+from singleton_decorator import singleton
 from typing import Dict, Tuple, Optional
 from datetime import datetime, timezone
-from fastapi import FastAPI
+from functools import lru_cache
+from pydantic import BaseModel
 import numpy.typing as npt
-from pathlib import Path
 import numpy as np
 import logging
-import uvicorn
+
+# system libraries
+from pathlib import Path
 import sys
 
+# fast api related
+from fastapi import FastAPI
+import uvicorn
+
+# project imports
+from configuration import LOG_LEVEL, HOST
 
 # log files path
 LOGS = './src/logs/'
@@ -80,6 +89,7 @@ def utc_time() -> datetime:
     return datetime.now(timezone.utc)
 
 
+@singleton
 class AppLogging:
     def __init__(self, level: Optional[int] = logging.INFO):
         # logging level of the root logger
@@ -99,6 +109,9 @@ class AppLogging:
 
         # the following object won't store the root logger
         self.service_loggers: Dict[str, logging.Logger] = {}
+
+        # this object is created once, that the bottom of this present file, avoiding circular imports later on
+        logging.info('Root logger was setup successfully')
 
     def _set_root_logger(self) -> None:
         """
@@ -196,7 +209,16 @@ def purge_logs():
         logging.info(f"Successfully purged {i} files from the logs directory")
 
 
-def health_check(service_name: str, logger: logging.Logger) -> Dict:
+class HealthResponse(BaseModel):
+    """
+    response object for the health check request
+    """
+    status: str
+    timestamp: datetime
+    service: str
+
+
+def service_health_check(service_name: str, logger: logging.Logger) -> Dict:
     """
     checks the health of a service
     """
@@ -215,8 +237,6 @@ def run_service(service_name: str, service: FastAPI, port: int):
     """
     running a generic service
     """
-    from application import HOST  # importing the value of the server hosting the services
-
     logging.info(f"Launching service {service_name}")
 
     if ENABLE_LOGS_PURGE:
@@ -228,3 +248,18 @@ def run_service(service_name: str, service: FastAPI, port: int):
         port=port,
         log_level=SERVICES_DEFAULT_LOG_LEVEL
     )
+
+
+@lru_cache(maxsize=25)
+def url(host: str, port: int, method: str):
+    """
+    constructs url to hit the api endpoint defined explicitly by the inputs
+    """
+    if method.startswith('/'):
+        method = method[1:]
+
+    return f"http://{host}:{port}/{method}"
+
+
+# setting up root logger once for the whole application: app scope
+app_logging = AppLogging(level=LOG_LEVEL)

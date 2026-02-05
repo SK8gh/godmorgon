@@ -1,25 +1,31 @@
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from datetime import datetime
 from fastapi import FastAPI
 from typing import Dict
 import multiprocessing
 import logging
 
-# Import our weather service
-from utils.utils import AppLogging, utc_time, health_check, run_service
+# utils functions
+from utils.utils import (
+    service_health_check,
+    HealthResponse,
+    app_logging,
+    run_service,
+    utc_time,
+    url
+)
 
+# microservices imports
+from src.weather.microservice import run_weather_service
+from src.bikes.microservice import run_bikes_service
 
-GATEWAY_NAME = "application-gateway"
-VERSION = "1.0.0"
-
-HOST = '0.0.0.0'
-PORT = 8000
+# project configuration
+import configuration as conf
 
 LOG_LEVEL = logging.DEBUG
 
-# setting up root logger: app scope
-app_logging = AppLogging(level=LOG_LEVEL)
+GATEWAY_CONFIG = conf.SERVICES['gateway']
+GATEWAY_NAME = GATEWAY_CONFIG['name']
+
 
 # setting up service logger: service scope
 logger = app_logging.set_service_logger(
@@ -32,7 +38,7 @@ logger = app_logging.set_service_logger(
 gateway = FastAPI(
     title=GATEWAY_NAME,
     description="Backend dedicated to redirect weather related requests",
-    version=VERSION
+    version=conf.VERSION
 )
 
 # Add CORS middleware for frontend integration
@@ -45,37 +51,57 @@ gateway.add_middleware(
 )
 
 
-class HealthResponse(BaseModel):
-    """
-    response object for the health check request
-    """
-    status: str
-    timestamp: datetime
-    service: str
-
-
 @gateway.get("/", response_model=Dict[str, str])
-def root():
+async def root():
     """
     root endpoint returning service information
     """
     return {
         "service": GATEWAY_NAME,
-        "version": VERSION,
+        "version": conf.VERSION,
         "status": "running",
-        "docs": "/docs",
-        "health": "/health"
+        "docs": conf.DOCS_ENDPOINT,
+        "health": conf.HEALTH_ENDPOINT
     }
 
 
-@gateway.get("/health", response_model=HealthResponse)
-def health_check():
+@gateway.get(conf.HEALTH_ENDPOINT, response_model=HealthResponse)
+async def health_endpoint():
     """
     checks the health of the service
     """
-    health_check(
+    # main gateway health check call
+    service_health_check(
         service_name=GATEWAY_NAME,
         logger=logger
+    )
+
+    # microservices calls
+    for _, service_config in conf.SERVICES['microservices'].items():
+        host = service_config['host'] or conf.HOST
+        port = service_config['port']
+        endpoint = conf.HEALTH_ENDPOINT
+
+        service_url = url(
+            host=host,
+            port=port,
+            method=endpoint
+        )
+
+        try:
+            response = requests.get(f"{microservice_url}/health", timeout=0)
+            microservices_health[microservice_name] = response.json()
+        except Exception as e:
+            logger.error(f"Health check failed for {microservice_name}: {str(e)}")
+            microservices_health[microservice_name] = {
+                "status": "unreachable",
+                "error": str(e)
+            }
+
+    return HealthResponse(
+        status="healthy",
+        timestamp=datetime.now(),
+        service=GATEWAY_NAME
     )
 
 
@@ -83,7 +109,7 @@ def run_gateway():
     run_service(
         service_name=GATEWAY_NAME,
         service=gateway,
-        port=PORT
+        port=GATEWAY_CONFIG['port']
     )
 
 
@@ -91,10 +117,6 @@ def run_application():
     """
     running the gateway & microservices
     """
-    # importing microservices at runtime to avoid circular imports
-    from src.weather.microservice import run_weather_service
-    from src.bikes.microservice import run_bikes_service
-
     processes = []
 
     try:

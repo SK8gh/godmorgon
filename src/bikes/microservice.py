@@ -5,13 +5,15 @@ from typing import Dict
 import logging
 
 # Import our weather service
-from application import VERSION, HealthResponse, app_logging
+from utils.utils import utc_time, run_service, HealthResponse, app_logging, service_health_check
 from src.bikes.bikes import get_nearest_stations
-from utils.utils import utc_time, run_service
+
+# project configuration
+import configuration as conf
 
 
-SERVICE_NAME = "bike-microservice"
-PORT = 8002
+SERVICE_CONFIG = conf.SERVICES['microservices']['bikes']
+SERVICE_NAME = SERVICE_CONFIG['name']
 
 # setting up service logger: service scope
 logger = app_logging.set_service_logger(
@@ -24,7 +26,7 @@ logger = app_logging.set_service_logger(
 bike_service = FastAPI(
     title=SERVICE_NAME,
     description="Backend dedicated to redirect weather related requests",
-    version=VERSION
+    version=conf.VERSION
 )
 
 # Add CORS middleware for frontend integration
@@ -44,32 +46,32 @@ class NearestStationsResponse(BaseModel):
 
 
 @bike_service.get("/", response_model=Dict[str, str])
-def root():
+async def root():
     """
     root endpoint returning service information
     """
     return {
         "service": SERVICE_NAME,
-        "version": VERSION,
-        "status": "running",
-        "docs": "/docs",
-        "health": "/health"
+        "version": conf.VERSION,
+        "status": 'running',
+        "docs": conf.DOCS_ENDPOINT,
+        "health": conf.HEALTH_ENDPOINT
     }
 
 
-@bike_service.get("/health", response_model=HealthResponse)
-def health_check():
+@bike_service.get(conf.HEALTH_ENDPOINT, response_model=HealthResponse)
+async def health_endpoint():
     """
     checks the health of the service
     """
-    health_check(
+    service_health_check(
         service_name=SERVICE_NAME,
         logger=logger
     )
 
 
 @bike_service.get("/get_address_nearest_stations", response_model=NearestStationsResponse)
-def get_address_nearest_stations(
+async def get_address_nearest_stations(
         address: str = Query(
             default='1 rue de Charonne, 75011',
             description="What are the nearest bike stations to this address?"
@@ -94,7 +96,7 @@ def run_bikes_service():
     run_service(
         service_name=SERVICE_NAME,
         service=bike_service,
-        port=PORT
+        port=SERVICE_CONFIG['port']
     )
 
 

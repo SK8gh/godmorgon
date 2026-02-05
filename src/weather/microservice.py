@@ -6,14 +6,16 @@ from datetime import datetime
 import logging
 
 # Import our weather service
-from application import VERSION, HealthResponse, app_logging
-from utils.utils import utc_time, health_check, run_service
+from utils.utils import utc_time, service_health_check, run_service, app_logging, HealthResponse
 from src.weather.weather import get_weather
 from utils.errors import GeocodeException
 
+# project configuration
+import configuration as conf
 
-SERVICE_NAME = "weather-microservice"
-PORT = 8001
+
+SERVICE_CONFIG = conf.SERVICES['microservices']['weather']
+SERVICE_NAME = SERVICE_CONFIG['name']
 
 # setting up service logger: service scope
 logger = app_logging.set_service_logger(
@@ -26,7 +28,7 @@ logger = app_logging.set_service_logger(
 weather_service = FastAPI(
     title=SERVICE_NAME,
     description="Backend dedicated to redirect weather related requests",
-    version=VERSION
+    version=conf.VERSION
 )
 
 # Add CORS middleware for frontend integration
@@ -56,32 +58,32 @@ class WeatherResponse(BaseModel):
 
 
 @weather_service.get("/", response_model=Dict[str, str])
-def root():
+async def root():
     """
     root endpoint returning service information
     """
     return {
         "service": SERVICE_NAME,
-        "version": VERSION,
+        "version": conf.VERSION,
         "status": "running",
-        "docs": "/docs",
-        "health": "/health"
+        "docs": conf.DOCS_ENDPOINT,
+        "health": conf.HEALTH_ENDPOINT
     }
 
 
-@weather_service.get("/health", response_model=HealthResponse)
-def health_check():
+@weather_service.get(conf.HEALTH_ENDPOINT, response_model=HealthResponse)
+async def health_endpoint():
     """
     checks the health of the service
     """
-    health_check(
+    service_health_check(
         service_name=SERVICE_NAME,
         logger=logger
     )
 
 
 @weather_service.get("/get_weather_info", response_model=WeatherResponse)
-def get_weather_info(
+async def get_weather_info(
         address: str = Query(default='1 rue de Charonne, 75011', description="What's the weather like at this address?")
 ):
     """
@@ -106,7 +108,7 @@ def run_weather_service():
     run_service(
         service_name=SERVICE_NAME,
         service=weather_service,
-        port=PORT
+        port=SERVICE_CONFIG['port']
     )
 
 
