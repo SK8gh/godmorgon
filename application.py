@@ -1,45 +1,52 @@
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Query
+from pydantic import BaseModel
 from typing import Dict
 import multiprocessing
 import logging
 
 # utils functions
 from utils.utils import (
+    add_timing_middleware,
+    GatewayHealthResponse,
     service_health_check,
-    HealthResponse,
-    app_logging,
+    send_request,
     run_service,
     utc_time,
     url
 )
 
 # microservices imports
-from src.weather.microservice import run_weather_service
-from src.bikes.microservice import run_bikes_service
+from src.bikes.microservice import NearestStationsResponse, run_bikes_service
+from src.weather.microservice import WeatherResponse, run_weather_service
 
 # project configuration
-import configuration as conf
+from configuration import (
+    ENABLE_PROFILING,
+    HEALTH_ENDPOINT,
+    DOCS_ENDPOINT,
+    HealthStatus,
+    SERVICES,
+    VERSION
+)
 
 LOG_LEVEL = logging.DEBUG
 
-GATEWAY_CONFIG = conf.SERVICES['gateway']
+GATEWAY_CONFIG = SERVICES['gateway']
+MICROSERVICES_CONFIG = SERVICES['microservices']
+
 GATEWAY_NAME = GATEWAY_CONFIG['name']
-
-
-# setting up service logger: service scope
-logger = app_logging.set_service_logger(
-    service_name=GATEWAY_NAME,
-    level=logging.DEBUG,
-    file_name=f'{GATEWAY_NAME}:{utc_time()}.log'
-)
 
 # Creating FastAPI app object
 gateway = FastAPI(
     title=GATEWAY_NAME,
     description="Backend dedicated to redirect weather related requests",
-    version=conf.VERSION
+    version=VERSION
 )
+
+if ENABLE_PROFILING:
+    add_timing_middleware(gateway)
 
 # Add CORS middleware for frontend integration
 gateway.add_middleware(
@@ -58,51 +65,153 @@ async def root():
     """
     return {
         "service": GATEWAY_NAME,
-        "version": conf.VERSION,
+        "version": VERSION,
         "status": "running",
-        "docs": conf.DOCS_ENDPOINT,
-        "health": conf.HEALTH_ENDPOINT
+        "docs": DOCS_ENDPOINT,
+        "health": HEALTH_ENDPOINT
     }
 
 
-@gateway.get(conf.HEALTH_ENDPOINT, response_model=HealthResponse)
+@gateway.get(HEALTH_ENDPOINT, response_model=GatewayHealthResponse)
 async def health_endpoint():
     """
     checks the health of the service
     """
+    # will return the following object
+    health = {
+        'gateway_service': GATEWAY_NAME,
+        'gateway_status': 200,
+        'timestamp': None,
+        'microservices_health': {}
+    }
+
     # main gateway health check call
-    service_health_check(
+    gateway_health_response = service_health_check(
         service_name=GATEWAY_NAME,
-        logger=logger
+        logger=None
     )
+
+    health['timestamp'] = str(gateway_health_response['timestamp'])
+
+    # object storing microservices health
+    microservices_health = health['microservices_health']
+
+    health_status = HealthStatus.STATUS_CODES.value  # ignore warning, the object has type HealthStatus, no dict
 
     # microservices calls
-    for _, service_config in conf.SERVICES['microservices'].items():
-        host = service_config['host'] or conf.HOST
-        port = service_config['port']
-        endpoint = conf.HEALTH_ENDPOINT
+    for _, service_config in MICROSERVICES_CONFIG.items():
+        # unpacking service name, port and timeout settings
+        port, timeout, name = service_config['port'], service_config['timeout'], service_config['name']
 
-        service_url = url(
-            host=host,
+        # building the correct url to request
+        request_url = url(
+            host='localhost',
             port=port,
-            method=endpoint
+            method=HEALTH_ENDPOINT
         )
 
-        try:
-            response = requests.get(f"{microservice_url}/health", timeout=0)
-            microservices_health[microservice_name] = response.json()
-        except Exception as e:
-            logger.error(f"Health check failed for {microservice_name}: {str(e)}")
-            microservices_health[microservice_name] = {
-                "status": "unreachable",
-                "error": str(e)
-            }
+        logging.info(f"Health-checking service: {name}")
 
-    return HealthResponse(
-        status="healthy",
-        timestamp=datetime.now(),
-        service=GATEWAY_NAME
-    )
+        try:
+            response = await send_request(
+                request_url=request_url,
+                timeout=timeout
+            )
+
+            service_status = health_status.get(response.status_code)
+
+            value = (str(response.status_code), service_status)
+
+        except (Exception, ) as e:
+            logging.error(f"Health check request failed for service {name}: {e}")
+
+            value = ('Unhealthy', str(e))
+
+        # adding the microservice health status to the dictionary created above
+        microservices_health[name] = value
+
+        if value[0] != '200':
+            # returning 'multi-status' if not all microservices are up and running
+            health['gateway_status'] = 207
+
+    return JSONResponse(
+            status_code=health['gateway_status'],
+            content=GatewayHealthResponse(**health).model_dump()
+        )
+
+
+class DashboardDataResponse(BaseModel):
+    """
+    response object for the dashboard data request
+    """
+    timestamp: str
+    bikes_info: NearestStationsResponse
+    weather_info: WeatherResponse
+
+
+@gateway.get('/get_dashboard_data', response_model=DashboardDataResponse)
+async def dashboard_data(
+        address: str = Query(
+            default='1 rue de Charonne, 75011',
+            description="Computes dashboard data for the "
+        )
+):
+    """
+    checks the health of the service
+    """
+    timestamp = utc_time()
+
+    logging.info(f"Received dashboard data request for address: {address}")
+
+    # unpacking the two microservices configurations
+    bikes_conf, weather_conf = (MICROSERVICES_CONFIG.get(k) for k in ('bikes', 'weather'))
+
+    # executing both requests to get the nearest bike stations and the weather information
+    try:
+        bike_response = await send_request(
+            request_url=
+            url(
+                host='localhost',  # host to request
+                port=bikes_conf['port'],  # appropriate port taken from the configuration
+                method='get_address_nearest_stations'  # appropriate method to query
+            ),
+            timeout=bikes_conf['timeout'],
+            params={
+                "address": address
+            }
+        )
+
+        assert bike_response.status_code == 200, 'Request failed'
+
+    except (Exception, ) as e:
+        logging.error(f"An error occurred while requesting the nearest bike stations information: {e}")
+        raise e
+
+    try:
+        weather_response = await send_request(
+            request_url=
+            url(
+                host='localhost',
+                port=weather_conf['port'],
+                method='get_weather_info'
+            ),
+            timeout=weather_conf['timeout'],
+            params={
+                "address": address
+            }
+        )
+
+        assert weather_response.status_code == 200, 'Request failed'
+
+    except (Exception, ) as e:
+        logging.error(f"An error occurred while requesting the weather information: {e}")
+        raise e
+
+    return {
+        'timestamp': str(timestamp),
+        "bikes_info": NearestStationsResponse(**bike_response.json()),
+        "weather_info": WeatherResponse(**weather_response.json()),
+    }
 
 
 def run_gateway():

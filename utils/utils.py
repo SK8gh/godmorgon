@@ -1,22 +1,26 @@
 from pythonjsonlogger.json import JsonFormatter
 from singleton_decorator import singleton
-from typing import Dict, Tuple, Optional
 from datetime import datetime, timezone
 from functools import lru_cache
-from pydantic import BaseModel
-import numpy.typing as npt
 import numpy as np
 import logging
+import time
+
+# typing imports
+from typing import Dict, Tuple, Optional, Any
+from pydantic import BaseModel
+import numpy.typing as npt
 
 # system libraries
 from pathlib import Path
+import httpx
 import sys
 
 # fast api related
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import uvicorn
 
-# project imports
+# project configuration
 from configuration import LOG_LEVEL, HOST
 
 # log files path
@@ -81,12 +85,16 @@ def _offset_values(arr: npt.ArrayLike, v: float = np.inf, left: bool = True) -> 
     return out
 
 
-def utc_time() -> datetime:
+def utc_time(to_string: bool = False) -> datetime | str:
     """
     computes the zulu timestamp
     """
     # timezone.utc ensures the timestamp is expressed in Zulu +00:00 time
-    return datetime.now(timezone.utc)
+    zulu_time = datetime.now(timezone.utc)
+
+    zulu_time = str(zulu_time) if to_string else zulu_time
+
+    return zulu_time
 
 
 @singleton
@@ -218,12 +226,26 @@ class HealthResponse(BaseModel):
     service: str
 
 
-def service_health_check(service_name: str, logger: logging.Logger) -> Dict:
+class GatewayHealthResponse(BaseModel):
+    """
+    response object for the gateway health check request
+    """
+    # gateway attributes
+    gateway_service: str
+    gateway_status: int
+    timestamp: str
+
+    # services health attributes
+    microservices_health: dict
+
+
+def service_health_check(service_name: str, logger: Optional[logging.Logger]) -> Dict:
     """
     checks the health of a service
     """
     zulu_time = datetime.now(timezone.utc)
 
+    logger = logger or logging
     logger.debug(f'Health check request received at {zulu_time} Zulu time')
 
     return {
@@ -259,6 +281,46 @@ def url(host: str, port: int, method: str):
         method = method[1:]
 
     return f"http://{host}:{port}/{method}"
+
+
+async def send_request(
+    *,
+    request_url: str,
+    method: str = "GET",
+    timeout: float = 5.0,
+    params: Optional[Dict[str, Any]] = None,
+    json: Optional[Dict[str, Any]] = None,
+    headers: Optional[Dict[str, str]] = None,
+) -> httpx.Response:
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        # executing the request asynchronously using the async client object
+        return await client.request(
+            method=method,
+            url=request_url,
+            params=params,
+            json=json,
+            headers=headers,
+        )
+
+
+logger = logging.getLogger("timing middleware:")
+
+
+def add_timing_middleware(app: FastAPI) -> None:
+    """
+    All requests to the specified app in argument pass by this middleware, timing their execution
+    """
+    @app.middleware("http")
+    async def timing_middleware(request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration = time.perf_counter() - start
+
+        logger.info(
+            f"[{app.title}] {request.method} {request.url.path} took {duration:.4f}s"
+        )
+
+        return response
 
 
 # setting up root logger once for the whole application: app scope

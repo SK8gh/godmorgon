@@ -29,7 +29,7 @@ TIMEOUT = 5
 ADDRESS_SEARCH_CONFIDENCE_THRESHOLD = 0.9
 
 
-def _geocode_address(address: str) -> Dict:
+def geocode_address(address: str) -> Dict:
     """
     querying information from the address that will be passed to the weather requester
     """
@@ -136,7 +136,7 @@ def get_weather(address: str) -> dict:
     querying the weather given an address in natural language
     """
     # retrieving the necessary information from the address
-    address_info = _geocode_address(address=address)
+    address_info = geocode_address(address=address)
 
     # the latitude and longitude are in the info, and will be used to request some data later on
     lat, lon = address_info['latitude'], address_info['longitude']

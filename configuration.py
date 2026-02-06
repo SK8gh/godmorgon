@@ -2,6 +2,9 @@
 project constants & configurations
 """
 
+from enum import Enum
+
+
 # application version
 VERSION = "1.0.0"
 
@@ -14,6 +17,10 @@ LOG_LEVEL = 'INFO'
 # global timeout
 TIMEOUT = 5
 
+# allowing profiling in the applications
+ENABLE_PROFILING = True
+
+# TODO: transform this object to an Enum object
 SERVICES = {
     'gateway': {
         'name': 'application-gateway',
@@ -43,3 +50,20 @@ SERVICES = {
 HEALTH_ENDPOINT = '/health'
 
 DOCS_ENDPOINT = '/docs'
+
+
+class HealthStatus(Enum):
+    HEALTHY: str = 'healthy'
+    UNREACHABLE: str = 'unreachable'
+    DOWN: str = 'down'
+    TIMEOUT: str = 'timeout'
+    BAD_REQUEST: str = 'bad request'
+    INTERNAL_ERROR: str = 'internal error'
+
+    STATUS_CODES: dict = {
+        200: 'healthy',
+        400: 'bad request',
+        408: 'timeout',
+        500: 'internal error',
+        520: 'down'
+    }

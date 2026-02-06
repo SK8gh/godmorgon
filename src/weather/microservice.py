@@ -6,7 +6,15 @@ from datetime import datetime
 import logging
 
 # Import our weather service
-from utils.utils import utc_time, service_health_check, run_service, app_logging, HealthResponse
+from utils.utils import (
+    add_timing_middleware,
+    service_health_check,
+    HealthResponse,
+    run_service,
+    app_logging,
+    utc_time
+)
+
 from src.weather.weather import get_weather
 from utils.errors import GeocodeException
 
@@ -30,6 +38,9 @@ weather_service = FastAPI(
     description="Backend dedicated to redirect weather related requests",
     version=conf.VERSION
 )
+
+if conf.ENABLE_PROFILING:
+    add_timing_middleware(weather_service)
 
 # Add CORS middleware for frontend integration
 weather_service.add_middleware(
@@ -76,7 +87,7 @@ async def health_endpoint():
     """
     checks the health of the service
     """
-    service_health_check(
+    return service_health_check(
         service_name=SERVICE_NAME,
         logger=logger
     )
@@ -84,7 +95,10 @@ async def health_endpoint():
 
 @weather_service.get("/get_weather_info", response_model=WeatherResponse)
 async def get_weather_info(
-        address: str = Query(default='1 rue de Charonne, 75011', description="What's the weather like at this address?")
+        address: str = Query(
+            default='1 rue de Charonne, 75011',
+            description="What's the weather like at this address?"
+        )
 ):
     """
     requests weather information

@@ -1,3 +1,4 @@
+import copy
 from typing import Tuple, Dict, List
 from functools import lru_cache
 import numpy as np
@@ -71,6 +72,10 @@ def format_stations_info(
     """
     # We'll fill this list object with stations information
     data = []
+
+    # both the following objects are computed once via a costly request. redefining them locally via deepcopy helps not
+    # having KeyError below, as they are both dicts (mutable type) and the 'pop' method will only work once
+    stations_info, stations_status = (copy.deepcopy(obj) for obj in (stations_info, stations_status))
 
     for station, status in zip(stations_info, stations_status):
         # If the following assertion does not pass, something went wrong

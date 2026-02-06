@@ -1,18 +1,27 @@
-from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from typing import Dict
 import logging
 
-# Import our weather service
-from utils.utils import utc_time, run_service, HealthResponse, app_logging, service_health_check
-from src.bikes.bikes import get_nearest_stations
+# Import objects from our project
+from utils.utils import (
+    add_timing_middleware,
+    service_health_check,
+    HealthResponse,
+    run_service,
+    app_logging,
+    utc_time
+)
+
+from src.bikes.bikes import get_nearest_stations, format_stations_info
+from src.weather.weather import geocode_address
 
 # project configuration
 import configuration as conf
 
 
-SERVICE_CONFIG = conf.SERVICES['microservices']['bikes']
+SERVICE_CONFIG, WEATHER_SERVICE = (conf.SERVICES['microservices'].get(k) for k in ('bikes', 'weather'))
 SERVICE_NAME = SERVICE_CONFIG['name']
 
 # setting up service logger: service scope
@@ -29,6 +38,9 @@ bike_service = FastAPI(
     version=conf.VERSION
 )
 
+if conf.ENABLE_PROFILING:
+    add_timing_middleware(bike_service)
+
 # Add CORS middleware for frontend integration
 bike_service.add_middleware(
     CORSMiddleware,
@@ -41,8 +53,9 @@ bike_service.add_middleware(
 
 class NearestStationsResponse(BaseModel):
     """
+    response object containing info about the nearest stations from an address. computed from df.to_dict method call
     """
-    pass
+    nearest_stations: dict
 
 
 @bike_service.get("/", response_model=Dict[str, str])
@@ -64,7 +77,7 @@ async def health_endpoint():
     """
     checks the health of the service
     """
-    service_health_check(
+    return service_health_check(
         service_name=SERVICE_NAME,
         logger=logger
     )
@@ -80,16 +93,17 @@ async def get_address_nearest_stations(
     """
     retrieving the nearest bike stations to the address passed as argument
     """
-    # perform weather microservice call
-    location = ...
+    # perform function call to get the location (latitude, longitude) from the address passed as argument
+    location = geocode_address(address=address)
 
-    # stations_info, stations_status = get_nearest_stations(
-    #     location=location
-    # )
+    stations_info, stations_status = get_nearest_stations(
+         location=(location['latitude'], location['longitude'])  # tuple arg containing (lat, lon)
+    )
 
     # returning the formatted information
-    # return format_stations_info(stations_info=station_info, stations_status=station_status)
-    return {}
+    response = format_stations_info(stations_info=stations_info, stations_status=stations_status)
+
+    return {'nearest_stations': response.to_dict()}
 
 
 def run_bikes_service():
