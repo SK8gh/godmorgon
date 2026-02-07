@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>godmorgon</title>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: linear-gradient(135deg, #ff9a3c 0%, #ff6a00 100%);
+  min-height: 100vh;
+  padding: 28px;
+  color: #1f2937;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  color: white;
+  font-size: 2.6em;
+  margin-bottom: 22px;
+}
+
+/* Address Input */
+input {
+  width: 420px;
+  max-width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.35);
+  font-size: 0.95em;
+  margin: 0 auto 12px auto;
+  display: block;
+
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.95),
+    rgba(243,244,246,0.95)
+  );
+  backdrop-filter: blur(8px);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 6px 20px rgba(0,0,0,0.12);
+}
+
+/* Error message */
+.inline-error {
+  text-align: center;
+  color: white;
+  font-size: 0.9em;
+  margin-bottom: 14px;
+  opacity: 0.9;
+}
+
+/* Layout */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 20px;
+}
+
+@media (max-width: 850px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cards */
+.card {
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.92),
+    rgba(243,244,246,0.92)
+  );
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 20px;
+
+  box-shadow:
+    0 12px 30px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+
+  border: 1px solid rgba(255,255,255,0.35);
+}
+
+.card h2 {
+  font-size: 1.15em;
+  margin-bottom: 10px;
+}
+
+/* Weather compact */
+.weather-info {
+  display: grid;
+  gap: 6px;
+}
+
+.temp {
+  font-size: 2.2em;
+  font-weight: 700;
+  color: #ef4444;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.92em;
+}
+
+/* Bikes table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+th, td {
+  padding: 10px 8px;
+  text-align: left;
+}
+
+th {
+  font-weight: 600;
+  color: #6b7280;
+}
+
+tr:not(:last-child) {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.station-name {
+  font-weight: 600;
+}
+
+/* Buttons */
+button {
+  background: white;
+  border: none;
+  padding: 12px 26px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: block;
+  margin: 18px auto 0 auto;
+  color: #ff6a00;
+}
+
+button:hover {
+  background: #f3f4f6;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  color: white;
+  font-size: 0.85em;
+  margin-top: 14px;
+  opacity: 0.9;
+}
+</style>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+function App() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [address, setAddress] = useState("1 rue de Charonne, 75011");
+
+  async function fetchData() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        "http://127.0.0.1:8000/get_dashboard_data?address=" +
+        encodeURIComponent(address)
+      );
+
+      if (!res.ok) {
+        throw new Error("Invalid address or API error");
+      }
+
+      const json = await res.json();
+      setData(json);
+
+    } catch (err) {
+      setError("Address not found or API unreachable");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const weather = data?.weather_info;
+
+  const stations = data
+    ? Object.keys(data.bikes_info.nearest_stations.station_id).map(key => ({
+        name: data.bikes_info.nearest_stations.name[key],
+        mechanical: data.bikes_info.nearest_stations.mechanical[key],
+        electrical: data.bikes_info.nearest_stations.electrical[key],
+      }))
+    : [];
+
+  return (
+    <div className="container">
+      <h1>🌅 godmorgon</h1>
+
+      <input
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && fetchData()}
+        placeholder="Enter your address"
+      />
+
+      {error && <div className="inline-error">{error}</div>}
+
+      <div className="grid">
+        {/* WEATHER */}
+        <div className="card">
+          <h2>Weather</h2>
+
+          {!weather ? (
+            <div style={{ fontSize: "0.9em", opacity: 0.7 }}>
+              No data yet
+            </div>
+          ) : (
+            <div className="weather-info">
+              <div className="temp">{weather.temperature}°C</div>
+
+              <div className="info-row">
+                <span>Wind</span>
+                <span>{weather.wind_speed} km/h</span>
+              </div>
+
+              <div className="info-row">
+                <span>Weather Code</span>
+                <span>{weather.weather_code}</span>
+              </div>
+
+              <div className="info-row">
+                <span>Humidity</span>
+                <span>{weather.humidity}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* BIKES */}
+        <div className="card">
+          <h2>Nearby Bike Stations</h2>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Station</th>
+                <th>Mechanical</th>
+                <th>Electric</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {stations.map((s, i) => (
+                <tr key={i}>
+                  <td className="station-name">{s.name}</td>
+                  <td>{s.mechanical}</td>
+                  <td>{s.electrical}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <button onClick={fetchData}>
+        {loading ? "Refreshing..." : "Refresh"}
+      </button>
+
+      {data && (
+        <div className="footer">
+          Last updated: {new Date(data.timestamp).toLocaleString()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById("root"));
+</script>
+</body>
+</html>
