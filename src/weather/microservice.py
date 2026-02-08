@@ -65,7 +65,7 @@ class WeatherResponse(BaseModel):
     timezone: str = ''
     wind_direction: int
     wind_speed: float
-    weather_code: int
+    type: str
 
 
 @weather_service.get("/", response_model=Dict[str, str])

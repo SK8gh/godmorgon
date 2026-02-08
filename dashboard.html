@@ -18,7 +18,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: linear-gradient(135deg, #ff9a3c 0%, #ff6a00 100%);
+  background: radial-gradient(circle at center, #ff9d5c 0%, #ff5d18 70%, #ff5a00 100%);
   min-height: 100vh;
   padding: 28px;
   color: #1f2937;
@@ -33,42 +33,63 @@ h1 {
   text-align: center;
   color: white;
   font-size: 2.6em;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
-/* Address Input */
+/* Address row */
+.address-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Input */
 input {
-  width: 420px;
-  max-width: 100%;
+  width: 300px;
   padding: 12px 16px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid rgba(0,0,0,0.08);
   font-size: 0.95em;
-  margin: 0 auto 12px auto;
-  display: block;
 
   background: linear-gradient(
     180deg,
-    rgba(255,255,255,0.95),
-    rgba(243,244,246,0.95)
+    rgba(245,246,248,0.98),
+    rgba(235,237,240,0.98)
   );
-  backdrop-filter: blur(8px);
 
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.6),
-    0 6px 20px rgba(0,0,0,0.12);
+    0 6px 18px rgba(0,0,0,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.5);
 }
 
-/* Error message */
+/* Refresh button */
+button {
+  background: linear-gradient(180deg, #f4f5f7, #e9ebee);
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #ff6a00;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+}
+
+button:hover {
+  background: #e7e9ed;
+}
+
+/* Error */
 .inline-error {
   text-align: center;
   color: white;
   font-size: 0.9em;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   opacity: 0.9;
 }
 
-/* Layout */
+/* Grid */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
@@ -85,46 +106,26 @@ input {
 .card {
   background: linear-gradient(
     180deg,
-    rgba(255,255,255,0.92),
-    rgba(243,244,246,0.92)
+    rgba(245,246,248,0.98),
+    rgba(235,237,240,0.98)
   );
-  backdrop-filter: blur(10px);
+
   border-radius: 20px;
-  padding: 20px;
+  padding: 18px;
 
   box-shadow:
-    0 12px 30px rgba(0,0,0,0.18),
+    0 14px 35px rgba(0,0,0,0.18),
     inset 0 1px 0 rgba(255,255,255,0.6);
 
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid rgba(0,0,0,0.08);
 }
 
 .card h2 {
-  font-size: 1.15em;
-  margin-bottom: 10px;
+  font-size: 1.1em;
+  margin-bottom: 8px;
 }
 
-/* Weather compact */
-.weather-info {
-  display: grid;
-  gap: 6px;
-}
-
-.temp {
-  font-size: 2.2em;
-  font-weight: 700;
-  color: #ef4444;
-  margin-bottom: 6px;
-  text-align: center;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.92em;
-}
-
-/* Bikes table */
+/* Tables */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -132,7 +133,7 @@ table {
 }
 
 th, td {
-  padding: 10px 8px;
+  padding: 9px 6px;
   text-align: left;
 }
 
@@ -142,28 +143,11 @@ th {
 }
 
 tr:not(:last-child) {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
 .station-name {
   font-weight: 600;
-}
-
-/* Buttons */
-button {
-  background: white;
-  border: none;
-  padding: 12px 26px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: block;
-  margin: 18px auto 0 auto;
-  color: #ff6a00;
-}
-
-button:hover {
-  background: #f3f4f6;
 }
 
 /* Footer */
@@ -183,11 +167,23 @@ button:hover {
 <script type="text/babel">
 const { useState, useEffect } = React;
 
+function timeAgo(timestamp) {
+  if (!timestamp) return "";
+
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return "Last updated just now";
+  if (diffMin < 60) return `Last updated ${diffMin} minutes ago`;
+  return "Last updated more than 1h ago";
+}
+
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [address, setAddress] = useState("1 rue de Charonne, 75011");
+  const [now, setNow] = useState(Date.now());
 
   async function fetchData() {
     setLoading(true);
@@ -199,24 +195,29 @@ function App() {
         encodeURIComponent(address)
       );
 
-      if (!res.ok) {
-        throw new Error("Invalid address or API error");
-      }
+      if (!res.ok) throw new Error("Bad API response");
 
       const json = await res.json();
       setData(json);
 
-    } catch (err) {
+    } catch {
       setError("Address not found or API unreachable");
     } finally {
       setLoading(false);
     }
   }
 
+  // Fetch on load
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Live timer for "last updated"
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(tick);
   }, []);
 
   const weather = data?.weather_info;
@@ -233,17 +234,23 @@ function App() {
     <div className="container">
       <h1>🌅 godmorgon</h1>
 
-      <input
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && fetchData()}
-        placeholder="Enter your address"
-      />
+      <div className="address-row">
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && fetchData()}
+          placeholder="Enter your address"
+        />
+
+        <button onClick={fetchData}>
+          {loading ? "..." : "Refresh"}
+        </button>
+      </div>
 
       {error && <div className="inline-error">{error}</div>}
 
       <div className="grid">
-        {/* WEATHER */}
+        {/* WEATHER TABLE */}
         <div className="card">
           <h2>Weather</h2>
 
@@ -252,24 +259,26 @@ function App() {
               No data yet
             </div>
           ) : (
-            <div className="weather-info">
-              <div className="temp">{weather.temperature}°C</div>
-
-              <div className="info-row">
-                <span>Wind</span>
-                <span>{weather.wind_speed} km/h</span>
-              </div>
-
-              <div className="info-row">
-                <span>Weather Code</span>
-                <span>{weather.weather_code}</span>
-              </div>
-
-              <div className="info-row">
-                <span>Humidity</span>
-                <span>{weather.humidity}%</span>
-              </div>
-            </div>
+            <table>
+              <tbody>
+                <tr>
+                  <td>Temperature</td>
+                  <td>{weather.temperature}°C</td>
+                </tr>
+                <tr>
+                  <td>Weather type</td>
+                  <td>{weather.type}</td>
+                </tr>
+                <tr>
+                  <td>Wind speed</td>
+                  <td>{weather.wind_speed} km/h</td>
+                </tr>
+                <tr>
+                  <td>Wind direction</td>
+                  <td>{weather.wind_direction}°</td>
+                </tr>
+              </tbody>
+            </table>
           )}
         </div>
 
@@ -299,13 +308,9 @@ function App() {
         </div>
       </div>
 
-      <button onClick={fetchData}>
-        {loading ? "Refreshing..." : "Refresh"}
-      </button>
-
       {data && (
         <div className="footer">
-          Last updated: {new Date(data.timestamp).toLocaleString()}
+          {timeAgo(data.timestamp)}
         </div>
       )}
     </div>

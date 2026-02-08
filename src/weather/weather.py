@@ -22,11 +22,42 @@ WEATHER_INFO = (
     'weather_code'
 )
 
+WEATHER_CODES = {
+    0: 'Clear sky',
+    1: 'Clear sky',
+    2: 'Cloudy',
+    3: 'Overcast',
+    45: 'Foggy',
+    48: 'Foggy',
+    51: 'Light drizzle',
+    53: 'Moderate drizzle',
+    55: 'Dense drizzle',
+    56: 'Light drizzle',
+    57: 'Dense drizzle',
+    61: 'Slight rain',
+    63: 'Moderate rain',
+    65: 'Heavy rain',
+    66: 'Light rain',
+    67: 'Heavy rain',
+    71: 'Slight snow',
+    73: 'Moderate snow',
+    75: 'Heavy snow',
+    77: 'Snow grains',
+    80: 'Slight showers',
+    81: 'Moderate showers',
+    82: 'Violent showers',
+    85: 'Slight snow showers',
+    86: 'Heavy snow showers',
+    95: 'Thunderstorm',
+    96: 'Thunderstorm',
+    99: 'Thunderstorm'
+}
+
 TIMEOUT = 5
 
 # the service that identifies address and computes their latitude & longitude has a confidence score. we won't access
 # its evaluation if the confidence score is below the following value
-ADDRESS_SEARCH_CONFIDENCE_THRESHOLD = 0.9
+ADDRESS_SEARCH_CONFIDENCE_THRESHOLD = 0.5
 
 
 def geocode_address(address: str) -> Dict:
@@ -121,12 +152,13 @@ def _format_weather_data(weather_data: dict) -> None:
     # useless field
     weather_data.pop('interval')
 
+    weather_data['type'] = WEATHER_CODES[weather_data.pop('weathercode')]
+
     # renaming keys
     for old_key, new_key in {
         'timezone_abbreviation': 'timezone',
         'winddirection': 'wind_direction',
         'windspeed': 'wind_speed',
-        'weathercode': 'weather_code'
     }.items():
         weather_data[new_key] = weather_data.pop(old_key)
 
