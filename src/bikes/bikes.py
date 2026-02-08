@@ -24,7 +24,6 @@ DROP_COLUMNS_STATION_INFO = (
 )
 
 
-@lru_cache(maxsize=1)
 def get_stations_info() -> Tuple[List[Dict], List[Dict]]:
     """
     Retrieves bike stations information and status from the respective endpoints
@@ -72,10 +71,6 @@ def format_stations_info(
     """
     # We'll fill this list object with stations information
     data = []
-
-    # both the following objects are computed once via a costly request. redefining them locally via deepcopy helps not
-    # having KeyError below, as they are both dicts (mutable type) and the 'pop' method will only work once
-    stations_info, stations_status = (copy.deepcopy(obj) for obj in (stations_info, stations_status))
 
     for station, status in zip(stations_info, stations_status):
         # If the following assertion does not pass, something went wrong
