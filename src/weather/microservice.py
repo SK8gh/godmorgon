@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import Tuple, Dict
 from datetime import datetime

@@ -1,9 +1,8 @@
-from utils.errors import GeocodeConfidenceError, GeocodeInvalidResponse, GeocodeException
+from utils.errors import GeocodeConfidenceError, GeocodeInvalidResponse
 from typing import Dict
 import pandas as pd
 import numpy as np
 import requests
-import json
 
 
 # government API endpoint to retrieve geolocation information from addresses
