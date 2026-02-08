@@ -150,6 +150,15 @@ tr:not(:last-child) {
   font-weight: 600;
 }
 
+/* Bike station row coloring */
+.renting-true {
+  background: rgba(34, 197, 94, 0.3);   /* very light green */
+}
+
+.renting-false {
+  background: rgba(239, 68, 68, 0.3);   /* very light red */
+}
+
 /* Footer */
 .footer {
   text-align: center;
@@ -174,7 +183,7 @@ function timeAgo(timestamp) {
   const diffMin = Math.floor(diffMs / 60000);
 
   if (diffMin < 1) return "Last updated just now";
-  if (diffMin < 60) return `Last updated ${diffMin} minutes ago`;
+  if (diffMin < 60) return `Last updated ${diffMin} minute(s) ago`;
   return "Last updated more than 1h ago";
 }
 
@@ -182,7 +191,7 @@ function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [address, setAddress] = useState("1 rue de Charonne, 75011");
+  const [address, setAddress] = useState("27 rue Chanzy, 75011");
   const [now, setNow] = useState(Date.now());
 
   async function fetchData() {
@@ -227,6 +236,8 @@ function App() {
         name: data.bikes_info.nearest_stations.name[key],
         mechanical: data.bikes_info.nearest_stations.mechanical[key],
         electrical: data.bikes_info.nearest_stations.electrical[key],
+        num_docks_available: data.bikes_info.nearest_stations.num_docks_available[key],
+        is_renting: data.bikes_info.nearest_stations.is_renting[key]
       }))
     : [];
 
@@ -263,11 +274,11 @@ function App() {
               <tbody>
                 <tr>
                   <td>Temperature</td>
-                  <td>{weather.temperature}°C</td>
+                  <td style={{ fontWeight: 600 }}>{weather.temperature}°C</td>
                 </tr>
                 <tr>
                   <td>Weather type</td>
-                  <td>{weather.type}</td>
+                  <td style={{ fontWeight: 600 }}>{weather.type}</td>
                 </tr>
                 <tr>
                   <td>Wind speed</td>
@@ -289,18 +300,23 @@ function App() {
           <table>
             <thead>
               <tr>
-                <th>Station</th>
+                <th></th>
                 <th>Mechanical</th>
                 <th>Electric</th>
+                <th>Parking</th>
               </tr>
             </thead>
 
             <tbody>
               {stations.map((s, i) => (
-                <tr key={i}>
+                <tr
+                  key={i}
+                  className={s.is_renting ? "renting-true" : "renting-false"}
+                >
                   <td className="station-name">{s.name}</td>
                   <td>{s.mechanical}</td>
                   <td>{s.electrical}</td>
+                  <td>{s.num_docks_available}</td>
                 </tr>
               ))}
             </tbody>
