@@ -16,14 +16,93 @@
   box-sizing: border-box;
 }
 
+/* THEME VARIABLES */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: radial-gradient(circle at center, #ff9d5c 0%, #ff5d18 70%, #ff5a00 100%);
+  --bg-main: radial-gradient(circle at top left, #1a1f2b, #0b0f19);
+  --text-main: #e5e7eb;
+  --glass-bg: rgba(255,255,255,0.08);
+  --border-glass: rgba(255,255,255,0.14);
+  --muted-text: rgba(255,255,255,0.7);
+  --blob-orange: #ff6a00;
+  --blob-purple: #6366f1;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  background: var(--bg-main);
   min-height: 100vh;
   padding: 28px;
-  color: #1f2937;
+  color: var(--text-main);
+  overflow-x: hidden;
+  transition: background 0.4s ease, color 0.3s ease;
 }
 
+/* LIGHT MODE */
+body.light {
+  --bg-main: radial-gradient(circle at top left, #f5f7fb, #e9ecf4);
+  --text-main: #111827;
+  --glass-bg: rgba(255,255,255,0.65);
+  --border-glass: rgba(0,0,0,0.08);
+  --muted-text: rgba(0,0,0,0.6);
+  --blob-orange: #ffb703;
+  --blob-purple: #8b5cf6;
+}
+
+/* BLOBS */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  width: 420px;
+  height: 420px;
+  filter: blur(140px);
+  opacity: 0.45;
+  z-index: -1;
+}
+
+body::before {
+  background: var(--blob-orange);
+  top: -120px;
+  left: -100px;
+}
+
+body::after {
+  background: var(--blob-purple);
+  bottom: -120px;
+  right: -100px;
+}
+
+/* HEADER BAR */
+.top-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+/* TOGGLE BUTTON */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+
+  border: 1px solid var(--border-glass);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+
+  color: var(--text-main);
+  font-size: 0.9em;
+  font-weight: 600;
+
+  transition: all 0.25s ease;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.05);
+}
+
+/* Container */
 .container {
   max-width: 1100px;
   margin: 0 auto;
@@ -31,62 +110,72 @@ body {
 
 h1 {
   text-align: center;
-  color: white;
-  font-size: 2.6em;
+  font-size: 2.7em;
   margin-bottom: 18px;
+  font-weight: 700;
 }
 
-/* Address row */
+/* Input row */
 .address-row {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-/* Input */
 input {
-  width: 300px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.08);
+  width: 320px;
+  padding: 13px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border-glass);
   font-size: 0.95em;
-
-  background: linear-gradient(
-    180deg,
-    rgba(245,246,248,0.98),
-    rgba(235,237,240,0.98)
-  );
-
-  box-shadow:
-    0 6px 18px rgba(0,0,0,0.12),
-    inset 0 1px 0 rgba(255,255,255,0.5);
+  color: var(--text-main);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
 }
 
-/* Refresh button */
+input::placeholder {
+  color: var(--muted-text);
+}
+
+/* BUTTON */
 button {
-  background: linear-gradient(180deg, #f4f5f7, #e9ebee);
-  border: 1px solid rgba(0,0,0,0.08);
-  padding: 12px 16px;
-  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 14px;
   font-weight: 600;
   cursor: pointer;
-  color: #ff6a00;
-
-  box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+  border: 1px solid var(--border-glass);
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  color: var(--text-main);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+  transition: all 0.25s ease;
 }
 
 button:hover {
-  background: #e7e9ed;
+  transform: translateY(-1px) scale(1.03);
 }
 
-/* Error */
-.inline-error {
-  text-align: center;
-  color: white;
-  font-size: 0.9em;
-  margin-bottom: 12px;
-  opacity: 0.9;
+button:active {
+  transform: scale(0.97);
+}
+
+/* Spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: var(--text-main);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Grid */
@@ -102,70 +191,53 @@ button:hover {
   }
 }
 
-/* Cards */
+/* Glass cards */
 .card {
-  background: linear-gradient(
-    180deg,
-    rgba(245,246,248,0.98),
-    rgba(235,237,240,0.98)
-  );
-
-  border-radius: 20px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  border-radius: 22px;
   padding: 18px;
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.35);
+  animation: fadeIn 0.5s ease both;
+}
 
-  box-shadow:
-    0 14px 35px rgba(0,0,0,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.6);
-
-  border: 1px solid rgba(0,0,0,0.08);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .card h2 {
-  font-size: 1.1em;
-  margin-bottom: 8px;
+  font-size: 1.05em;
+  margin-bottom: 10px;
 }
 
 /* Tables */
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95em;
 }
 
 th, td {
-  padding: 9px 6px;
-  text-align: left;
+  padding: 10px 6px;
 }
 
 th {
-  font-weight: 600;
-  color: #6b7280;
-}
-
-tr:not(:last-child) {
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-}
-
-.station-name {
-  font-weight: 600;
+  color: var(--muted-text);
 }
 
 /* Bike station row coloring */
-.renting-true {
-  background: rgba(34, 197, 94, 0.3);   /* very light green */
-}
+.renting-true { background: rgba(34, 197, 94, 0.18); }
+.renting-false { background: rgba(239, 68, 68, 0.18); }
 
-.renting-false {
-  background: rgba(239, 68, 68, 0.3);   /* very light red */
-}
+.station-name { font-weight: 600; }
 
 /* Footer */
 .footer {
   text-align: center;
-  color: white;
+  color: var(--muted-text);
   font-size: 0.85em;
   margin-top: 14px;
-  opacity: 0.9;
 }
 </style>
 </head>
@@ -178,10 +250,8 @@ const { useState, useEffect } = React;
 
 function timeAgo(timestamp) {
   if (!timestamp) return "";
-
   const diffMs = Date.now() - new Date(timestamp).getTime();
   const diffMin = Math.floor(diffMs / 60000);
-
   if (diffMin < 1) return "Last updated just now";
   if (diffMin < 60) return `Last updated ${diffMin} minute(s) ago`;
   return "Last updated more than 1h ago";
@@ -193,6 +263,12 @@ function App() {
   const [error, setError] = useState(null);
   const [address, setAddress] = useState("1 rue de Charonne, 75011");
   const [now, setNow] = useState(Date.now());
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
+
+  useEffect(() => {
+    document.body.classList.toggle("light", theme === "light");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   async function fetchData() {
     setLoading(true);
@@ -216,14 +292,12 @@ function App() {
     }
   }
 
-  // Fetch on load
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Live timer for "last updated"
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(tick);
@@ -243,6 +317,15 @@ function App() {
 
   return (
     <div className="container">
+
+      <div className="top-bar">
+        <div className="theme-toggle" onClick={() =>
+          setTheme(theme === "dark" ? "light" : "dark")
+        }>
+          {theme === "dark" ? "🌙 Dark" : "☀️ Light"}
+        </div>
+      </div>
+
       <h1>🌅 godmorgon</h1>
 
       <div className="address-row">
@@ -254,49 +337,31 @@ function App() {
         />
 
         <button onClick={fetchData}>
-          {loading ? "..." : "Refresh"}
+          {loading ? <div className="spinner" /> : "Refresh"}
         </button>
       </div>
 
       {error && <div className="inline-error">{error}</div>}
 
       <div className="grid">
-        {/* WEATHER TABLE */}
         <div className="card">
           <h2>Weather</h2>
-
           {!weather ? (
-            <div style={{ fontSize: "0.9em", opacity: 0.7 }}>
-              No data yet
-            </div>
+            <div style={{ opacity: 0.7 }}>No data yet</div>
           ) : (
             <table>
               <tbody>
-                <tr>
-                  <td>Temperature</td>
-                  <td style={{ fontWeight: 600 }}>{weather.temperature}°C</td>
-                </tr>
-                <tr>
-                  <td>Weather type</td>
-                  <td style={{ fontWeight: 600 }}>{weather.type}</td>
-                </tr>
-                <tr>
-                  <td>Wind speed</td>
-                  <td>{weather.wind_speed} km/h</td>
-                </tr>
-                <tr>
-                  <td>Wind direction</td>
-                  <td>{weather.wind_direction}°</td>
-                </tr>
+                <tr><td>Temperature</td><td style={{ fontWeight: 600 }}>{weather.temperature}°C</td></tr>
+                <tr><td>Weather type</td><td style={{ fontWeight: 600 }}>{weather.type}</td></tr>
+                <tr><td>Wind speed</td><td>{weather.wind_speed} km/h</td></tr>
+                <tr><td>Wind direction</td><td>{weather.wind_direction}°</td></tr>
               </tbody>
             </table>
           )}
         </div>
 
-        {/* BIKES */}
         <div className="card">
           <h2>Nearby Bike Stations</h2>
-
           <table>
             <thead>
               <tr>
@@ -306,13 +371,9 @@ function App() {
                 <th>Parking</th>
               </tr>
             </thead>
-
             <tbody>
               {stations.map((s, i) => (
-                <tr
-                  key={i}
-                  className={s.is_renting ? "renting-true" : "renting-false"}
-                >
+                <tr key={i} className={s.is_renting ? "renting-true" : "renting-false"}>
                   <td className="station-name">{s.name}</td>
                   <td>{s.mechanical}</td>
                   <td>{s.electrical}</td>
@@ -324,11 +385,7 @@ function App() {
         </div>
       </div>
 
-      {data && (
-        <div className="footer">
-          {timeAgo(data.timestamp)}
-        </div>
-      )}
+      {data && <div className="footer">{timeAgo(data.timestamp)}</div>}
     </div>
   );
 }
